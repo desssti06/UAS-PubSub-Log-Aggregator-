@@ -1,0 +1,84 @@
+version: "3.8"
+
+services:
+  # PostgreSQL storage untuk persistensi data
+  storage:
+    image: postgres:16-alpine
+    container_name: uts-postgres
+    environment:
+      POSTGRES_DB: aggregator_db
+      POSTGRES_USER: aggregator_user
+      POSTGRES_PASSWORD: aggregator_pass
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aggregator_user -d aggregator_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - aggregator_network
+
+  # Redis broker untuk message queue (opsional, untuk demo advanced)
+  broker:
+    image: redis:7-alpine
+    container_name: uts-redis
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - aggregator_network
+
+  # Aggregator: API + Consumer untuk processing events
+  aggregator:
+    build: .
+    container_name: uts-aggregator
+    depends_on:
+      storage:
+        condition: service_healthy
+      broker:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://aggregator_user:aggregator_pass@storage:5432/aggregator_db
+      - REDIS_URL=redis://broker:6379
+      - QUEUE_MAXSIZE=50000
+      - NUM_WORKERS=3
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./data:/app/data
+    networks:
+      - aggregator_network
+    restart: unless-stopped
+
+  # Publisher: simulator/generator events
+  publisher:
+    build:
+      context: ./publisher
+      dockerfile: Dockerfile.publisher
+    container_name: uts-publisher
+    depends_on:
+      - aggregator
+    environment:
+      - AGG_URL=http://aggregator:8080/publish
+      - NUM_EVENTS=10000
+      - DUPLICATE_RATE=0.3
+    networks:
+      - aggregator_network
+
+volumes:
+  pg_data:
+    name: uts_postgres_data
+  redis_data:
+    name: uts_redis_data
+
+networks:
+  aggregator_network:
+    name: uts_network
+    driver: bridge
+
