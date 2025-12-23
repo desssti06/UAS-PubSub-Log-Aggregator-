@@ -53,7 +53,7 @@ graph TD
 
 ### 1. Clone & Navigate
 ```bash
-cd "h:\SISTER\PubSubLogAggregator - Copy"
+cd "h:\SISTER\UAS-PubSub-LogAggregator"
 ```
 
 ### 2. Build & Run dengan Docker Compose
