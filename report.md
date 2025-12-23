@@ -1,4 +1,4 @@
-# Laporan UTS Sistem Terdistribusi
+# Laporan UAS Sistem Terdistribusi
 ## Tema: Pub-Sub Log Aggregator dengan Idempotent Consumer dan Deduplication  
 
 **Nama:** Desti Nur Irawati  
